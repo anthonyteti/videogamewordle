@@ -1,6 +1,6 @@
 # Video Game Wordle Web App
 
-This is a web application inspired by the game Wordle but focused on guessing video game titles. The app is built using Python (Flask) for the backend and HTML/CSS/JavaScript for the frontend.
+This is a web application inspired by the game Wordle but focused on guessing video game titles. The app is built using Python (Flask) for the backend and HTML/CSS/JavaScript for the frontend. Currently not complete in it's entirety but the main functionality is working.
 
 ## Features
 
