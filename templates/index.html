@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Game Wordle</title>
+    <style>
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            background-color: #121212;
+            color: #FFFFFF;
+            margin: 0;
+            padding: 0;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        input[type="text"],
+        button {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 16px;
+            padding: 8px;
+            margin: 5px;
+            border: none;
+            background-color: #333333;
+            color: #FFFFFF;
+        }
+
+        button:hover {
+            cursor: pointer;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            border: 1px solid #FFFFFF;
+            padding: 8px;
+            text-align: left;
+        }
+
+        .correct {
+            background-color: #4CAF50; /* Dark green background */
+        }
+
+        .close {
+            background-color: #afad4c; /* Dark yellow background */
+
+        }
+
+        .close:hover,
+        .close:focus {
+            color: #FFFFFF;
+            text-decoration: none;
+        }
+
+        .modal {
+            display: none;  /* Hidden by default */
+            position: fixed;
+            z-index: 1; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto; /* 15% from the top and centered */
+            padding: 20px;
+            border: 1px solid #888;
+            width: 50%; /* Could be more or less, depending on screen size */
+            text-align: center;
+        }
+
+        .modal-content img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        #guess-list {
+            position: absolute;
+            background-color: #333333;
+            border: 1px solid #FFFFFF;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+
+        #guess-list div {
+            padding: 5px;
+            cursor: pointer;
+        }
+
+        #guess-list div:hover {
+            background-color: #555555;
+        }
+    </style>
+</head>
+<body>
+    <h1>Video Game Wordle</h1>
+    <form id="guess-form">
+        <label for="guess">Enter game title:</label>
+        <input type="text" id="guess" name="guess" required autocomplete="off">
+        <div id="guess-list"></div>
+        <button type="submit">Submit</button>
+    </form>
+    <table id="guesses-table">
+        <thead>
+            <tr>
+                <th>Guess</th>
+                <th>Release Year</th>
+                <th>Genres</th>
+                <th>Publisher</th>
+                <th>Age Rating</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+
+    <!-- Game over modal -->
+    <div id="game-over-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Game Over!</h2>
+            <p>The correct game was: <span id="correct-game"></span></p>
+            <img id="correct-game-cover" src="" alt="Cover">
+        </div>
+    </div>
+
+    <script>
+        // Function to fetch game names from the server
+        function fetchGameNames() {
+            fetch('/game_names')
+            .then(response => response.json())
+            .then(data => {
+                gameNames = data.game_names;
+            });
+        }
+
+        // Function to filter game names based on user input
+        function filterGameNames(input) {
+            const filteredNames = gameNames.filter(name =>
+                name.toLowerCase().includes(input.toLowerCase())
+            );
+            return filteredNames;
+        }
+
+        // Function to update the dropdown list
+        function updateDropdownList(input) {
+            const filteredNames = filterGameNames(input);
+            const guessList = document.getElementById('guess-list');
+            guessList.innerHTML = '';
+
+            filteredNames.forEach(name => {
+                const option = document.createElement('div');
+                option.textContent = name;
+                option.addEventListener('click', () => {
+                    document.getElementById('guess').value = name;
+                    guessList.innerHTML = '';
+                });
+                guessList.appendChild(option);
+            });
+        }
+
+        // Event listener for input field
+        document.getElementById('guess').addEventListener('input', function() {
+            const input = this.value.trim();
+            if (input === '') {
+                document.getElementById('guess-list').innerHTML = '';
+            } else {
+                updateDropdownList(input);
+            }
+        });
+
+        // Fetch game names when the page loads
+        let gameNames = [];
+        fetchGameNames();
+
+        // Function to handle form submission
+        document.getElementById('guess-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const guess = document.getElementById('guess').value;
+            const guesses = document.querySelectorAll('#guesses-table tbody tr').length; // Count the number of guesses
+            fetch('/guess', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `guess=${guess}&guesses=${guesses}` // Pass the guess count to the server
+            })
+            .then(response => response.json())
+            .then(data => {
+                const table = document.getElementById('guesses-table').getElementsByTagName('tbody')[0];
+                const newRow = table.insertRow();
+
+                const nameCell = newRow.insertCell(0);
+                nameCell.textContent = data.name;
+
+                const yearCell = newRow.insertCell(1);
+                yearCell.textContent = data.release_year;
+                yearCell.className = data.release_year_class;
+
+                const genresCell = newRow.insertCell(2);
+                genresCell.textContent = data.genres;
+                genresCell.className = data.genres_class;
+
+                const publisherCell = newRow.insertCell(3);
+                publisherCell.textContent = data.publisher;
+                publisherCell.className = data.publisher_class;
+
+                const ageRatingCell = newRow.insertCell(4);
+                ageRatingCell.textContent = data.age_rating;
+                ageRatingCell.className = data.age_rating_class;
+
+                // Check if game over
+                if (data.game_over) {
+                    document.getElementById('correct-game').textContent = data.correct_game;
+                    fetch('/correct_game_cover')
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById('correct-game-cover').src = data.cover_url;
+                        document.getElementById('game-over-modal').style.display = 'block';
+                    });
+                }
+            });
+        });
+
+        // Close modal when the close button or outside modal area is
+        document.getElementsByClassName('close')[0].onclick = function() {
+            modal.style.display = "none";
+        };
+    </script>
+</body>
+</html>
